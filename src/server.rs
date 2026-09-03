@@ -5,7 +5,7 @@ use std::path::PathBuf;
 use std::sync::Arc;
 use std::time::Duration;
 
-use anyhow::{Context, anyhow};
+use anyhow::anyhow;
 use ratatui::backend::CrosstermBackend;
 use ratatui::crossterm::cursor::{Hide, Show};
 use ratatui::crossterm::event::{Event, KeyCode, KeyModifiers};
@@ -217,6 +217,7 @@ impl Handler for AppServer {
         session: &mut Session,
     ) -> Result<(), Self::Error> {
         let ctf_client = self.ctf_clients.lock().await.contains_key(&self.id);
+
         match ctf_client {
             true => {
                 let mut current_event = Vec::new();
@@ -224,9 +225,7 @@ impl Handler for AppServer {
                 while let Some(b) = iter.next() {
                     current_event.push(*b);
 
-                    if let Some(ke) = terminput::Event::parse_from(&current_event)
-                        .with_context(|| "could not parse key")?
-                    {
+                    if let Ok(Some(ke)) = terminput::Event::parse_from(&current_event) {
                         if ke.as_key().is_some_and(|x| {
                             x.code == terminput::KeyCode::Esc && iter.peek().is_some()
                         }) {
@@ -430,7 +429,7 @@ impl russh_sftp::server::Handler for SftpSession {
     async fn init(
         &mut self,
         version: u32,
-        extensions: HashMap<String, String>,
+        _extensions: HashMap<String, String>,
     ) -> Result<russh_sftp::protocol::Version, Self::Error> {
         if self.version.is_some() {
             return Err(StatusCode::ConnectionLost);
@@ -442,7 +441,7 @@ impl russh_sftp::server::Handler for SftpSession {
     async fn close(
         &mut self,
         id: u32,
-        handle: String,
+        _handle: String,
     ) -> Result<russh_sftp::protocol::Status, Self::Error> {
         Ok(Status {
             id,
@@ -456,8 +455,8 @@ impl russh_sftp::server::Handler for SftpSession {
         &mut self,
         id: u32,
         filename: String,
-        pflags: russh_sftp::protocol::OpenFlags,
-        attrs: russh_sftp::protocol::FileAttributes,
+        _pflags: russh_sftp::protocol::OpenFlags,
+        _attrs: russh_sftp::protocol::FileAttributes,
     ) -> Result<russh_sftp::protocol::Handle, Self::Error> {
         if let Some(path) = get_file_path(&filename) {
             if path.is_file() {
@@ -476,8 +475,8 @@ impl russh_sftp::server::Handler for SftpSession {
         &mut self,
         id: u32,
         handle: String,
-        offset: u64,
-        len: u32,
+        _offset: u64,
+        _len: u32,
     ) -> Result<russh_sftp::protocol::Data, Self::Error> {
         if !self.file_read_done {
             self.file_read_done = true;
@@ -493,7 +492,7 @@ impl russh_sftp::server::Handler for SftpSession {
         Err(StatusCode::Eof)
     }
 
-    async fn realpath(&mut self, id: u32, path: String) -> Result<Name, Self::Error> {
+    async fn realpath(&mut self, id: u32, _path: String) -> Result<Name, Self::Error> {
         Ok(Name {
             id,
             files: vec![File::dummy("/")],
