@@ -3,14 +3,14 @@ use std::error::Error;
 use std::io::{Read, Write};
 use std::path::PathBuf;
 use std::sync::Arc;
-use std::time::{Duration, Instant};
+use std::time::Duration;
 
-use anyhow::{Context, anyhow};
+use anyhow::anyhow;
 use ratatui::backend::CrosstermBackend;
 use ratatui::crossterm::cursor::{Hide, Show};
 use ratatui::crossterm::event::{Event, KeyCode, KeyModifiers};
+use ratatui::crossterm::execute;
 use ratatui::crossterm::terminal::{EnterAlternateScreen, LeaveAlternateScreen};
-use ratatui::crossterm::{self, execute};
 use ratatui::layout::Rect;
 use ratatui::{Terminal, TerminalOptions, Viewport};
 use russh::keys::ssh_key::rand_core::OsRng;
@@ -429,7 +429,7 @@ impl russh_sftp::server::Handler for SftpSession {
     async fn init(
         &mut self,
         version: u32,
-        extensions: HashMap<String, String>,
+        _extensions: HashMap<String, String>,
     ) -> Result<russh_sftp::protocol::Version, Self::Error> {
         if self.version.is_some() {
             return Err(StatusCode::ConnectionLost);
@@ -441,7 +441,7 @@ impl russh_sftp::server::Handler for SftpSession {
     async fn close(
         &mut self,
         id: u32,
-        handle: String,
+        _handle: String,
     ) -> Result<russh_sftp::protocol::Status, Self::Error> {
         Ok(Status {
             id,
@@ -455,8 +455,8 @@ impl russh_sftp::server::Handler for SftpSession {
         &mut self,
         id: u32,
         filename: String,
-        pflags: russh_sftp::protocol::OpenFlags,
-        attrs: russh_sftp::protocol::FileAttributes,
+        _pflags: russh_sftp::protocol::OpenFlags,
+        _attrs: russh_sftp::protocol::FileAttributes,
     ) -> Result<russh_sftp::protocol::Handle, Self::Error> {
         if let Some(path) = get_file_path(&filename) {
             if path.is_file() {
@@ -475,8 +475,8 @@ impl russh_sftp::server::Handler for SftpSession {
         &mut self,
         id: u32,
         handle: String,
-        offset: u64,
-        len: u32,
+        _offset: u64,
+        _len: u32,
     ) -> Result<russh_sftp::protocol::Data, Self::Error> {
         if !self.file_read_done {
             self.file_read_done = true;
@@ -492,7 +492,7 @@ impl russh_sftp::server::Handler for SftpSession {
         Err(StatusCode::Eof)
     }
 
-    async fn realpath(&mut self, id: u32, path: String) -> Result<Name, Self::Error> {
+    async fn realpath(&mut self, id: u32, _path: String) -> Result<Name, Self::Error> {
         Ok(Name {
             id,
             files: vec![File::dummy("/")],
