@@ -60,16 +60,17 @@ impl Screen for BrowseScreen<'_> {
             {
                 self.filter.ui_active = true
             }
-            (KeyCode::Right, KeyModifiers::CONTROL) => {
+            (KeyCode::Right, KeyModifiers::CONTROL) if self.state == BrowseScreenState::Browse => {
                 return Some(Box::new(LeaderboardScreen::new(
                     Some(self.user.clone()),
                     self.conf.clone(),
                 )));
             }
-            (k, m) => {
+            (k, m) if self.state == BrowseScreenState::Submit => {
                 let event = KeyEvent::new(k, m);
                 self.submission.input(event);
             }
+            _ => (),
         };
         None
     }

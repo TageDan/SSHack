@@ -150,7 +150,7 @@ impl User {
     }
 }
 
-#[derive(Serialize, Deserialize)]
+#[derive(Serialize, Deserialize, Clone)]
 pub struct Flag {
     name: String,
     description: String,

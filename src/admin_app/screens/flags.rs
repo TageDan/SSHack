@@ -59,11 +59,7 @@ impl Screen for AdminScreen {
 
         let area = draw_screen_border(
             f,
-            if self.conf.about.is_some() {
-                vec!["FLAGS"]
-            } else {
-                vec!["FLAGS"]
-            },
+            vec!["FLAGS", "EDIT"],
             0,
             commands,
             self.error.as_deref(),
@@ -85,8 +81,12 @@ impl Screen for AdminScreen {
 
 impl AdminScreen {
     fn submit(&mut self) -> Option<Box<dyn Screen + Send>> {
-        //Some(Box::new(screens::edit)),
-        None
+        let index = self.table_state.selected()?;
+        let flag = self.flags.get(index)?.clone();
+        Some(Box::new(screens::edit::EditScreen::new(
+            flag,
+            self.conf.clone(),
+        )))
     }
 
     pub fn new(conf: Conf) -> Self {
