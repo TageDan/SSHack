@@ -3,14 +3,14 @@ use std::error::Error;
 use std::io::{Read, Write};
 use std::path::PathBuf;
 use std::sync::Arc;
-use std::time::Duration;
+use std::time::{Duration, Instant};
 
 use anyhow::{Context, anyhow};
 use ratatui::backend::CrosstermBackend;
 use ratatui::crossterm::cursor::{Hide, Show};
 use ratatui::crossterm::event::{Event, KeyCode, KeyModifiers};
-use ratatui::crossterm::execute;
 use ratatui::crossterm::terminal::{EnterAlternateScreen, LeaveAlternateScreen};
+use ratatui::crossterm::{self, execute};
 use ratatui::layout::Rect;
 use ratatui::{Terminal, TerminalOptions, Viewport};
 use russh::keys::ssh_key::rand_core::OsRng;
@@ -217,6 +217,7 @@ impl Handler for AppServer {
         session: &mut Session,
     ) -> Result<(), Self::Error> {
         let ctf_client = self.ctf_clients.lock().await.contains_key(&self.id);
+
         match ctf_client {
             true => {
                 let mut current_event = Vec::new();
@@ -224,9 +225,7 @@ impl Handler for AppServer {
                 while let Some(b) = iter.next() {
                     current_event.push(*b);
 
-                    if let Some(ke) = terminput::Event::parse_from(&current_event)
-                        .with_context(|| "could not parse key")?
-                    {
+                    if let Ok(Some(ke)) = terminput::Event::parse_from(&current_event) {
                         if ke.as_key().is_some_and(|x| {
                             x.code == terminput::KeyCode::Esc && iter.peek().is_some()
                         }) {
