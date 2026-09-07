@@ -42,3 +42,13 @@ theme = "colors"
 
 # Set text to show in about page (or uncomment to remove about page)
 about = "This CTF was built using the SSHack ctf framework: https://github.com/d-z0n/SSHack"
+
+# Password for the admin ui
+# If removed the admin ui won't require a password
+# which may be fine if you don't expose the port
+admin_password = "unPWNable!"
+
+# admin ui port
+# If removed there will be no admin ui and the
+# cli must be used for adding/removing/listing flags 
+admin_port = 13373

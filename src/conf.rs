@@ -13,6 +13,8 @@ pub struct Conf {
     pub animation: bool,
     pub password: Option<String>,
     pub about: Option<String>,
+    pub admin_password: Option<String>,
+    pub admin_port: Option<u16>,
 }
 
 #[derive(Deserialize)]
@@ -22,6 +24,8 @@ struct ConfToml {
     port: u16,
     animation: Option<bool>,
     password: Option<String>,
+    admin_password: Option<String>,
+    admin_port: Option<u16>,
     about: Option<String>,
 }
 impl ConfToml {
@@ -32,7 +36,9 @@ impl ConfToml {
             port: self.port,
             animation: self.animation.unwrap_or(true),
             password: self.password,
+            admin_password: self.admin_password,
             about: self.about,
+            admin_port: self.admin_port,
         })
     }
 }
@@ -57,6 +63,8 @@ This CTF was built using the SSHack ctf framework: https://github.com/d-z0n/SSHa
             ),
             animation: true,
             password: None,
+            admin_password: Some("unPWNable!".to_string()),
+            admin_port: Some(13373),
         })
     }
 

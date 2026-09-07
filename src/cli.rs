@@ -10,13 +10,13 @@ use toml::{from_str, to_string};
 
 use crate::database::{self, Flag};
 
-#[derive(Parser)]
+#[derive(Parser, Clone)]
 pub struct Args {
     #[command(subcommand)]
     pub command: Commands,
 }
 
-#[derive(Subcommand)]
+#[derive(Subcommand, Clone)]
 pub enum Commands {
     /// Run the server
     Run {
@@ -36,7 +36,7 @@ pub enum Commands {
     },
 }
 
-#[derive(Subcommand)]
+#[derive(Subcommand, Clone)]
 pub enum FlagCommands {
     /// list flags in a tidy list
     List,
@@ -100,7 +100,7 @@ impl FlagCommands {
                 description,
                 points,
                 flag,
-            } => database::create_flag(&name, &description, *points, &flag),
+            } => database::create_flag(&name, &description, *points, &flag).unwrap(),
             FlagCommands::Write { path } => {
                 let mut file: Box<dyn Write> = match path {
                     None => Box::new(std::io::stdout()),
@@ -136,6 +136,18 @@ impl FlagCommands {
                     );
                 }
             }
+        }
+    }
+}
+
+impl Args {
+    pub fn leaderboard(&self) -> bool {
+        match self.command {
+            Commands::Run {
+                local: _,
+                leaderboard: true,
+            } => true,
+            _ => false,
         }
     }
 }

@@ -7,14 +7,10 @@ use ratatui::{
 };
 
 use crate::{
+    app::screens::{about::AboutScreen, flags::BrowseScreen},
     conf::Conf,
     database::User,
-    screens::{
-        about::AboutScreen,
-        flags::BrowseScreen,
-        home::HomeScreen,
-        screen::{Screen, draw_screen_border},
-    },
+    screen::{Screen, draw_screen_border},
 };
 
 pub struct LeaderboardScreen {

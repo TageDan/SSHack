@@ -21,8 +21,9 @@ use russh_sftp::protocol::{File, FileAttributes, Name, Status, StatusCode, Versi
 use tokio::sync::Mutex;
 use tokio::sync::mpsc::{UnboundedSender, unbounded_channel};
 
+use crate::cli::Args;
 use crate::conf::Conf;
-use crate::{App, database};
+use crate::{app::App, database};
 
 type SshTerminal = Terminal<CrosstermBackend<TerminalHandle>>;
 
@@ -78,18 +79,18 @@ pub struct AppServer {
     id: usize,
     conf: Conf,
     key: Option<russh::keys::PublicKey>,
-    leaderboard: bool,
+    args: Args,
 }
 
 impl AppServer {
-    pub fn new(conf: Conf, leaderboard: bool) -> Self {
+    pub fn new(conf: Conf, args: Args) -> Self {
         Self {
             ctf_clients: Arc::new(Mutex::new(HashMap::new())),
             id: 0,
             key: None,
             new_channels: Arc::new(Mutex::new(HashMap::new())),
             conf,
-            leaderboard,
+            args,
         }
     }
 
@@ -154,7 +155,7 @@ fn set_key(key: &ssh_key::PrivateKey) -> Result<(), Box<dyn Error>> {
     path.push("priv_key");
     let mut file = std::fs::File::create(path)?;
     let key = key.to_openssh(ssh_key::LineEnding::LF)?;
-    file.write(key.as_bytes())?;
+    file.write_all(key.as_bytes())?;
     Ok(())
 }
 
@@ -337,7 +338,7 @@ impl Handler for AppServer {
         let app = App::new(
             self.conf.clone(),
             key.clone().ok_or(anyhow!("no public key"))?,
-            self.leaderboard,
+            self.args.clone(),
         );
 
         execute!(terminal.backend_mut(), EnterAlternateScreen, Hide)?;

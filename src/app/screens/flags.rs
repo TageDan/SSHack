@@ -1,21 +1,19 @@
-use std::{cmp::Ordering, error::Error, option::Option};
+use std::{error::Error, option::Option};
 
 use ratatui::{
-    crossterm::event::{KeyCode, KeyModifiers},
+    Frame,
+    crossterm::event::{KeyCode, KeyEvent, KeyModifiers},
     layout::{Constraint, Layout, Margin, Rect},
     style::{Style, Stylize},
     widgets::{Block, Borders, Cell, Clear, Paragraph, Row, Table, TableState},
-    Frame,
 };
+use ratatui_textarea::TextArea;
 
 use crate::{
+    app::screens::leaderboard::LeaderboardScreen,
     conf::Conf,
     database::{Flag, User},
-    screens::{
-        home::HomeScreen,
-        leaderboard::LeaderboardScreen,
-        screen::{draw_screen_border, Screen},
-    },
+    screen::{Screen, draw_screen_border},
 };
 
 #[derive(PartialEq)]
@@ -24,19 +22,19 @@ enum BrowseScreenState {
     Submit,
 }
 
-pub struct BrowseScreen {
+pub struct BrowseScreen<'a> {
     state: BrowseScreenState,
     user: User,
     flags: Vec<Flag>,
     error: Option<String>,
     table_state: TableState,
     scroll: u16,
-    submission: String,
+    submission: TextArea<'a>,
     filter: SearchFilter,
     conf: Conf,
 }
 
-impl Screen for BrowseScreen {
+impl Screen for BrowseScreen<'_> {
     fn handle_input(
         &mut self,
         key: Option<(KeyCode, KeyModifiers)>,
@@ -54,22 +52,24 @@ impl Screen for BrowseScreen {
         match key {
             (KeyCode::Enter, _) => return self.submit(),
             (KeyCode::Esc, _) => return self.escape(),
-            (KeyCode::Tab, _) | (KeyCode::Down, _) => self.focus_next(),
-            (KeyCode::BackTab, KeyModifiers::SHIFT) | (KeyCode::Up, _) => self.focus_prev(),
-            (KeyCode::Backspace, _) => self.erase(),
+            (KeyCode::Down, _) => self.focus_next(),
+            (KeyCode::Up, _) => self.focus_prev(),
             (KeyCode::Char('r'), KeyModifiers::CONTROL) => return self.reload(),
             (KeyCode::Char('f'), KeyModifiers::CONTROL)
                 if self.state == BrowseScreenState::Browse =>
             {
                 self.filter.ui_active = true
             }
-            (KeyCode::Right, KeyModifiers::CONTROL) => {
+            (KeyCode::Right, KeyModifiers::CONTROL) if self.state == BrowseScreenState::Browse => {
                 return Some(Box::new(LeaderboardScreen::new(
                     Some(self.user.clone()),
                     self.conf.clone(),
                 )));
             }
-            (KeyCode::Char(c), _) => self.write_char(c),
+            (k, m) if self.state == BrowseScreenState::Submit => {
+                let event = KeyEvent::new(k, m);
+                self.submission.input(event);
+            }
             _ => (),
         };
         None
@@ -111,7 +111,7 @@ impl Screen for BrowseScreen {
     }
 }
 
-impl BrowseScreen {
+impl BrowseScreen<'_> {
     fn submit(&mut self) -> Option<Box<dyn Screen + Send>> {
         match self.state {
             BrowseScreenState::Browse => {
@@ -123,7 +123,7 @@ impl BrowseScreen {
                     return None;
                 };
                 if let Some(flag) = self.flags.get(index) {
-                    if flag.flag() != self.submission {
+                    if flag.flag() != self.submission.lines()[0] {
                         self.error = Some("incorrect flag submitted".to_string());
                         return None;
                     }
@@ -131,7 +131,7 @@ impl BrowseScreen {
                         self.error = Some(e.to_string());
                         return None;
                     };
-                    self.submission.clear();
+                    self.submission = TextArea::default();
                     self.state = BrowseScreenState::Browse;
                     self.reload();
                 }
@@ -145,6 +145,7 @@ impl BrowseScreen {
             Ok(flags) => (flags, None),
             Err(e) => (vec![], Some(e.to_string())),
         };
+
         Self {
             state: BrowseScreenState::Browse,
             table_state: TableState::default().with_selected(0),
@@ -153,7 +154,7 @@ impl BrowseScreen {
             error,
             scroll: 0,
             filter: SearchFilter::new(),
-            submission: String::new(),
+            submission: TextArea::default(),
             conf,
         }
     }
@@ -176,27 +177,11 @@ impl BrowseScreen {
         match self.state {
             BrowseScreenState::Submit => {
                 self.scroll = 0;
-                self.submission.clear();
+                self.submission = TextArea::default();
                 self.state = BrowseScreenState::Browse;
                 return None;
             }
             _ => None,
-        }
-    }
-
-    fn erase(&mut self) {
-        match self.state {
-            BrowseScreenState::Browse => (),
-            BrowseScreenState::Submit => {
-                let _ = self.submission.pop();
-            }
-        }
-    }
-
-    fn write_char(&mut self, c: char) {
-        match self.state {
-            BrowseScreenState::Browse => (),
-            BrowseScreenState::Submit => self.submission.push(c),
         }
     }
 
@@ -307,10 +292,9 @@ impl BrowseScreen {
 
         f.render_widget(description_text, description);
 
-        let input_box = Paragraph::new(self.submission.as_str())
-            .block(Block::bordered().title_top("Submit Flag").style(style2));
-
-        f.render_widget(input_box, submission);
+        let block = Block::bordered().title_top("Submit Flag").style(style2);
+        f.render_widget(&block, submission);
+        f.render_widget(&self.submission, block.inner(submission));
 
         Ok(())
     }

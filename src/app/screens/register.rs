@@ -1,30 +1,27 @@
+use crate::{
+    app::screens::{flags::BrowseScreen, home::HomeScreen},
+    conf::Conf,
+    database,
+    screen::{Screen, draw_screen_border},
+};
 use ratatui::{
-    crossterm::event::{KeyCode, KeyModifiers},
+    crossterm::event::{KeyCode, KeyEvent, KeyModifiers},
     layout::{Constraint, Layout},
     style::Style,
     widgets::{Block, Paragraph},
 };
+use ratatui_textarea::TextArea;
 
-use crate::{
-    conf::Conf,
-    database,
-    screens::{
-        flags::BrowseScreen,
-        home::HomeScreen,
-        screen::{Screen, draw_screen_border},
-    },
-};
-
-pub struct RegisterScreen {
-    username: String,
-    password: String,
+pub struct RegisterScreen<'a> {
+    username: TextArea<'a>,
+    password: TextArea<'a>,
     selected: u8,
     key: russh::keys::PublicKey,
     error: Option<String>,
     conf: Conf,
 }
 
-impl Screen for RegisterScreen {
+impl Screen for RegisterScreen<'_> {
     fn handle_input(
         &mut self,
         key: Option<(KeyCode, KeyModifiers)>,
@@ -35,7 +32,6 @@ impl Screen for RegisterScreen {
         self.error = None;
         match key {
             (KeyCode::Enter, _) => return self.submit(),
-            (KeyCode::Char(c), _) => self.write_char(c),
             (KeyCode::Up, _) | (KeyCode::BackTab, KeyModifiers::SHIFT) => self.prev(),
             (KeyCode::Down, _) | (KeyCode::Tab, _) => self.next(),
             (KeyCode::Esc, _) => {
@@ -44,7 +40,10 @@ impl Screen for RegisterScreen {
                     self.key.clone(),
                 )));
             }
-            (KeyCode::Backspace, _) => self.delete(),
+            (k, m) => {
+                let event = KeyEvent::new(k, m);
+                self.handle_input(event);
+            }
             _ => (),
         };
         None
@@ -83,12 +82,11 @@ impl Screen for RegisterScreen {
                 .fg(self.conf.theme.base08)
                 .bg(self.conf.theme.base00);
 
-            f.render_widget(
-                Paragraph::new(self.username.as_str())
-                    .block(Block::bordered().title_top("USERNAME"))
-                    .style(color),
-                user,
-            );
+            let block = Block::bordered().title_top("USERNAME").style(color);
+
+            f.render_widget(&block, user);
+
+            f.render_widget(&self.username, block.inner(user));
         } else {
             let [_, user, pass, _] = Layout::vertical([
                 Constraint::Fill(1),
@@ -105,27 +103,33 @@ impl Screen for RegisterScreen {
                 .fg(self.conf.theme.base05)
                 .bg(self.conf.theme.base00);
 
-            f.render_widget(
-                Paragraph::new(self.username.as_str())
-                    .block(Block::bordered().title_top("USERNAME"))
-                    .style(if self.selected == 0 { color1 } else { color2 }),
-                user,
-            );
-            f.render_widget(
-                Paragraph::new("*".repeat(self.password.len()))
-                    .block(Block::bordered().title_top("PASSWORD"))
-                    .style(if self.selected == 1 { color1 } else { color2 }),
-                pass,
-            );
+            let block = Block::bordered()
+                .title_top("USERNAME")
+                .style(if self.selected == 0 { color1 } else { color2 });
+
+            f.render_widget(&block, user);
+
+            f.render_widget(&self.username, block.inner(user));
+
+            let block = Block::bordered()
+                .title_top("PASSWORD")
+                .style(if self.selected == 1 { color1 } else { color2 });
+
+            f.render_widget(&block, pass);
+
+            f.render_widget(&self.password, block.inner(pass));
         }
     }
 }
 
-impl RegisterScreen {
+impl RegisterScreen<'_> {
     pub fn new(conf: Conf, key: russh::keys::PublicKey) -> Self {
+        let mut password_text_area = TextArea::default();
+        password_text_area.set_mask_char('\u{2022}');
+
         Self {
-            username: String::new(),
-            password: String::new(),
+            username: TextArea::default(),
+            password: password_text_area,
             selected: 0,
             key,
             error: None,
@@ -146,12 +150,12 @@ impl RegisterScreen {
             .conf
             .password
             .as_ref()
-            .is_some_and(|x| x != &self.password)
+            .is_some_and(|x| x != &self.password.lines()[0])
         {
             self.error = Some("Wrong password".to_string());
             return None;
         }
-        match database::User::register_user(&self.username, self.key.clone()) {
+        match database::User::register_user(&self.username.lines()[0], self.key.clone()) {
             Err(e) => {
                 self.error = Some(e.to_string());
                 return None;
@@ -162,24 +166,16 @@ impl RegisterScreen {
         }
     }
 
-    fn write_char(&mut self, c: char) {
-        match self.selected {
-            0 => self.username.push(c),
-            1 => self.password.push(c),
-            _ => (),
-        };
-    }
-
-    fn delete(&mut self) {
+    fn handle_input(&mut self, e: KeyEvent) {
         match self.selected {
             0 => {
-                self.username.pop();
+                self.username.input(e);
             }
             1 => {
-                self.password.pop();
+                self.password.input(e);
             }
             _ => (),
-        }
+        };
     }
 
     fn next(&mut self) {

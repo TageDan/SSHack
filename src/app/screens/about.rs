@@ -2,20 +2,14 @@ use ratatui::{
     Frame,
     crossterm::event::{KeyCode, KeyModifiers},
     layout::{Constraint, Layout, Rect},
-    style::Stylize,
-    text::Text,
-    widgets::{Block, Borders, Cell, Paragraph, Row, Table, TableState},
+    widgets::Paragraph,
 };
 
 use crate::{
+    app::screens::leaderboard::LeaderboardScreen,
     conf::Conf,
     database::User,
-    screens::{
-        flags::BrowseScreen,
-        home::HomeScreen,
-        leaderboard::LeaderboardScreen,
-        screen::{Screen, draw_screen_border},
-    },
+    screen::{Screen, draw_screen_border},
 };
 
 pub struct AboutScreen {

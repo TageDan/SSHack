@@ -12,18 +12,14 @@ use tachyonfx::{
     fx::{self},
 };
 
-use crate::{conf::Conf, screens::flags::BrowseScreen};
+use crate::admin_app::screens::login::LoginScreen;
 use crate::{
-    database::User,
-    screens::{
-        register::RegisterScreen,
-        screen::{Screen, draw_screen_border},
-    },
+    conf::Conf,
+    screen::{Screen, draw_screen_border},
 };
 
 pub struct HomeScreen {
     conf: Conf,
-    key: russh::keys::PublicKey,
     last_time: Instant,
     effect_text: Effect,
 }
@@ -34,13 +30,7 @@ impl Screen for HomeScreen {
         _key: Option<(KeyCode, KeyModifiers)>,
     ) -> Option<Box<dyn Screen + Send>> {
         if self.effect_text.done() {
-            match User::login(self.key.clone()) {
-                Some(u) => Some(Box::new(BrowseScreen::new(u, self.conf.clone()))),
-                None => Some(Box::new(RegisterScreen::new(
-                    self.conf.clone(),
-                    self.key.clone(),
-                ))),
-            }
+            Some(Box::new(LoginScreen::new(self.conf.clone())))
         } else {
             None
         }
@@ -93,7 +83,7 @@ impl Screen for HomeScreen {
 }
 
 impl HomeScreen {
-    pub fn new(conf: Conf, key: russh::keys::PublicKey) -> Self {
+    pub fn new(conf: Conf, _key: russh::keys::PublicKey) -> Self {
         let text = if conf.animation {
             let text1 = fx::slide_in(
                 tachyonfx::Motion::LeftToRight,
@@ -120,7 +110,6 @@ impl HomeScreen {
 
         Self {
             conf,
-            key,
             last_time: Instant::now(),
             effect_text: text,
         }

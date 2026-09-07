@@ -1,24 +1,18 @@
+mod admin_app;
+mod app;
 mod cli;
 mod conf;
 mod database;
-mod screens;
-mod server;
+mod screen;
 mod theme;
-use std::{error::Error, time::Duration};
+
+use std::error::Error;
 
 use clap::Parser;
-use ratatui::{
-    DefaultTerminal, Frame,
-    crossterm::{
-        self,
-        event::{KeyCode, KeyModifiers, poll},
-    },
-};
 
 use crate::{
     cli::{Args, Commands},
     conf::Conf,
-    screens::{home::HomeScreen, leaderboard::LeaderboardScreen},
 };
 
 // inspired by: https://github.com/Eugeny/russh/blob/main/russh/examples/ratatui_app.rs
@@ -30,11 +24,21 @@ async fn main() -> Result<(), Box<dyn Error>> {
         Commands::Run { local, leaderboard } => {
             let conf = Conf::get();
             if !local {
-                let mut server = server::AppServer::new(conf, leaderboard);
-                server.run().await.expect("Failed running server");
+                let args_1 = args.clone();
+                let conf_1 = conf.clone();
+                let task1 = tokio::task::spawn(async {
+                    let mut server = app::server::AppServer::new(conf_1, args_1);
+                    server.run().await.expect("Failed running server")
+                });
+                let task2 = tokio::task::spawn(async {
+                    let mut server = admin_app::server::AdminAppServer::new(conf, args);
+                    server.run().await.expect("Failed running server")
+                });
+                task1.await.expect("Failed running app server");
+                task2.await.expect("Failed running admin server");
             } else {
                 let mut term = ratatui::init();
-                let res = app(&mut term, conf, leaderboard);
+                let res = app::app(&mut term, conf, leaderboard);
                 ratatui::restore();
                 return res;
             }
@@ -43,65 +47,4 @@ async fn main() -> Result<(), Box<dyn Error>> {
     }
 
     Ok(())
-}
-
-fn app(
-    terminal: &mut DefaultTerminal,
-    conf: Conf,
-    leaderboard: bool,
-) -> Result<(), Box<dyn Error>> {
-    let mut app = App {
-        screen: if !leaderboard {
-            Box::new(screens::home::HomeScreen::new(
-            conf,
-            russh::keys::PublicKey::read_openssh_file(
-                &std::env::home_dir()
-                    .ok_or(
-                        "to run locally you still need a public key under ~/.shh/id_ed_25519.pub, this is just so that your account can be identified correctly",
-                    )?
-                    .join(".ssh/id_ed25519.pub"),
-            )?,
-        ))
-        } else {
-            Box::new(LeaderboardScreen::new(None, conf))
-        },
-    };
-    loop {
-        terminal.draw(|f| app.render(f))?;
-        if poll(Duration::from_millis(50)).is_ok_and(|x| x) {
-            if let Some(k) = crossterm::event::read()?.as_key_press_event() {
-                match (k.code, k.modifiers) {
-                    (KeyCode::Char('q'), KeyModifiers::CONTROL) => return Ok(()),
-                    k => {
-                        if let Some(t) = app.screen.handle_input(Some(k)) {
-                            app.screen = t;
-                        }
-                    }
-                }
-            }
-        }
-        if let Some(t) = app.screen.handle_input(None) {
-            app.screen = t;
-        }
-    }
-}
-
-struct App {
-    screen: Box<dyn screens::screen::Screen + Send>,
-}
-
-impl App {
-    fn render(&mut self, f: &mut Frame) {
-        self.screen.render(f)
-    }
-
-    fn new(conf: Conf, key: russh::keys::PublicKey, leaderboard: bool) -> Self {
-        Self {
-            screen: if !leaderboard {
-                Box::new(HomeScreen::new(conf, key))
-            } else {
-                Box::new(LeaderboardScreen::new(None, conf))
-            },
-        }
-    }
 }

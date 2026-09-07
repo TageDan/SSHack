@@ -61,6 +61,9 @@ Some things that I am looking into adding right now are:
 ### v0.x.x
 
 #### v.0.3.0 [ ]
+ [ ] Admin UI
+ [X] Add better text editing
+ [ ] Limit rerendering to make text selection better
  [ ] Teams (optional)
  [X] Docker container
  [ ] Spin up challange container on demand
