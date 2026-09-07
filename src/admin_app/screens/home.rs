@@ -12,16 +12,14 @@ use tachyonfx::{
     fx::{self},
 };
 
-use crate::{admin_app::screens::login::LoginScreen, database::User};
+use crate::admin_app::screens::login::LoginScreen;
 use crate::{
-    app::screens::flags::BrowseScreen,
     conf::Conf,
     screen::{Screen, draw_screen_border},
 };
 
 pub struct HomeScreen {
     conf: Conf,
-    key: russh::keys::PublicKey,
     last_time: Instant,
     effect_text: Effect,
 }
@@ -85,7 +83,7 @@ impl Screen for HomeScreen {
 }
 
 impl HomeScreen {
-    pub fn new(conf: Conf, key: russh::keys::PublicKey) -> Self {
+    pub fn new(conf: Conf, _key: russh::keys::PublicKey) -> Self {
         let text = if conf.animation {
             let text1 = fx::slide_in(
                 tachyonfx::Motion::LeftToRight,
@@ -112,7 +110,6 @@ impl HomeScreen {
 
         Self {
             conf,
-            key,
             last_time: Instant::now(),
             effect_text: text,
         }

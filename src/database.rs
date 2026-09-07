@@ -275,21 +275,48 @@ pub fn clear_flags() {
     conn.execute(QUERY, []).unwrap();
 }
 
-pub fn create_flag(name: &str, description: &str, points: i32, flag: &str) {
+pub fn create_flag(
+    name: &str,
+    description: &str,
+    points: i32,
+    flag: &str,
+) -> Result<(), Box<dyn Error>> {
     let conn = conn();
     const QUERY: &str = "INSERT INTO flags (name, description,points, flag) VALUES (?1,?2,?3,?4)";
     let mut stmt = conn.prepare(QUERY).unwrap();
-    stmt.execute([name, description, &points.to_string(), flag])
-        .unwrap();
+    stmt.execute([name, description, &points.to_string(), flag])?;
+    Ok(())
 }
 
 pub fn delete_flag(id: i32) -> Result<(), Box<dyn Error>> {
     let conn = conn();
     const QUERY: &str = "DELETE FROM flags WHERE id = ?1";
     let mut stmt = conn.prepare(QUERY).unwrap();
-    let c = stmt.execute([id]).unwrap();
+    let c = stmt.execute([id])?;
     if c == 0 {
         return Err(format!("no flag with id: {}", id).into());
     }
+    Ok(())
+}
+
+pub fn update_flag(
+    id: &i32,
+    name: &str,
+    description: &str,
+    points: i32,
+    flag: &str,
+) -> Result<(), Box<dyn Error>> {
+    let conn = conn();
+    const QUERY: &str =
+        "UPDATE flags SET name = ?1, description = ?2, points = ?3, flag = ?4 WHERE id = ?5";
+    let mut stmt = conn.prepare(QUERY).unwrap();
+    stmt.execute([
+        name,
+        description,
+        &points.to_string(),
+        flag,
+        &id.to_string(),
+    ])?;
+
     Ok(())
 }

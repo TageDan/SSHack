@@ -155,7 +155,7 @@ fn set_key(key: &ssh_key::PrivateKey) -> Result<(), Box<dyn Error>> {
     path.push("priv_key");
     let mut file = std::fs::File::create(path)?;
     let key = key.to_openssh(ssh_key::LineEnding::LF)?;
-    file.write(key.as_bytes())?;
+    file.write_all(key.as_bytes())?;
     Ok(())
 }
 
@@ -225,9 +225,7 @@ impl Handler for AppServer {
                 while let Some(b) = iter.next() {
                     current_event.push(*b);
 
-                    if let Some(ke) = terminput::Event::parse_from(&current_event)
-                        .with_context(|| "could not parse key")?
-                    {
+                    if let Ok(Some(ke)) = terminput::Event::parse_from(&current_event) {
                         if ke.as_key().is_some_and(|x| {
                             x.code == terminput::KeyCode::Esc && iter.peek().is_some()
                         }) {

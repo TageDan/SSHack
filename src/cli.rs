@@ -100,7 +100,7 @@ impl FlagCommands {
                 description,
                 points,
                 flag,
-            } => database::create_flag(&name, &description, *points, &flag),
+            } => database::create_flag(&name, &description, *points, &flag).unwrap(),
             FlagCommands::Write { path } => {
                 let mut file: Box<dyn Write> = match path {
                     None => Box::new(std::io::stdout()),

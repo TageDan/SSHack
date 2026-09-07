@@ -9,7 +9,7 @@ use ratatui_textarea::TextArea;
 use crate::{
     admin_app::screens::flags::AdminScreen,
     conf::Conf,
-    database::Flag,
+    database::{self, Flag},
     screen::{Screen, draw_screen_border},
 };
 
@@ -20,7 +20,7 @@ enum EditState {
 }
 
 pub struct EditScreen<'a> {
-    flag: Flag,
+    flag: Option<Flag>,
     focus: usize,
     title: TextArea<'a>,
     points: TextArea<'a>,
@@ -28,26 +28,49 @@ pub struct EditScreen<'a> {
     flag_string: TextArea<'a>,
     state: EditState,
     conf: Conf,
+    error: Option<String>,
 }
 
 impl EditScreen<'_> {
-    pub fn new(flag: Flag, conf: Conf) -> Self {
+    pub fn new(flag: Option<Flag>, conf: Conf) -> Self {
         Self {
             flag: flag.clone(),
             focus: 0,
-            title: TextArea::new(vec![flag.name().to_string()]),
-            points: TextArea::new(vec![format!("{}", flag.points())]),
-            description: TextArea::new(vec![flag.description().to_string()]),
-            flag_string: TextArea::new(vec![flag.flag().to_string()]),
+            title: TextArea::new(vec![
+                flag.as_ref()
+                    .map(|x| x.name())
+                    .unwrap_or_default()
+                    .to_string(),
+            ]),
+            points: TextArea::new(vec![format!(
+                "{}",
+                flag.as_ref().map(|x| x.points()).unwrap_or_default()
+            )]),
+            description: TextArea::new(vec![
+                flag.as_ref()
+                    .map(|x| x.description())
+                    .unwrap_or_default()
+                    .to_string(),
+            ]),
+            flag_string: TextArea::new(vec![
+                flag.as_ref()
+                    .map(|x| x.flag())
+                    .unwrap_or_default()
+                    .to_string(),
+            ]),
             state: EditState::Navigation,
             conf,
+            error: None,
         }
     }
 
     fn submit(&mut self) -> Option<Box<dyn Screen + Send>> {
         self.state = match self.state {
             EditState::Navigation => EditState::Focused,
-            EditState::Focused => EditState::Navigation,
+            EditState::Focused => {
+                self.focus_next();
+                EditState::Navigation
+            }
         };
         None
     }
@@ -71,6 +94,56 @@ impl EditScreen<'_> {
         self.focus = self.focus.saturating_sub(1);
         None
     }
+
+    fn save(&mut self) -> Option<Box<dyn Screen + Send>> {
+        let points = self.points.lines().iter().fold(String::new(), |x, a| x + a);
+        let points = points
+            .parse::<i32>()
+            .or_else(|e| {
+                self.error = Some(e.to_string());
+                Err(e)
+            })
+            .ok()?;
+        if let Some(f) = self.flag.as_ref() {
+            if let Err(e) = database::update_flag(
+                &f.id(),
+                &self.title.lines().iter().fold(String::new(), |x, a| x + a),
+                &self
+                    .description
+                    .lines()
+                    .iter()
+                    .fold(String::new(), |x, a| x + a),
+                points,
+                &self
+                    .flag_string
+                    .lines()
+                    .iter()
+                    .fold(String::new(), |x, a| x + a),
+            ) {
+                self.error = Some(e.to_string());
+                return None;
+            };
+        } else {
+            if let Err(e) = database::create_flag(
+                &self.title.lines().iter().fold(String::new(), |x, a| x + a),
+                &self
+                    .description
+                    .lines()
+                    .iter()
+                    .fold(String::new(), |x, a| x + a),
+                points,
+                &self
+                    .flag_string
+                    .lines()
+                    .iter()
+                    .fold(String::new(), |x, a| x + a),
+            ) {
+                self.error = Some(e.to_string());
+                return None;
+            };
+        }
+        Some(Box::new(AdminScreen::new(self.conf.clone())))
+    }
 }
 
 impl Screen for EditScreen<'_> {
@@ -82,7 +155,11 @@ impl Screen for EditScreen<'_> {
         )>,
     ) -> Option<Box<dyn Screen + Send>> {
         let key = key?;
+        self.error = None;
         match key {
+            (KeyCode::Char('s'), KeyModifiers::CONTROL) if !(self.state == EditState::Focused) => {
+                return self.save();
+            }
             (KeyCode::Enter, _) if !(self.state == EditState::Focused && self.focus == 2) => {
                 return self.submit();
             }
@@ -109,10 +186,10 @@ impl Screen for EditScreen<'_> {
             vec!["FLAGS", "EDIT"],
             1,
             match self.state {
-                EditState::Navigation => "^Q[QUIT] Esc[BACK] ⇵[NAV] ↵[FOCUS]",
+                EditState::Navigation => "^Q[QUIT] Esc[BACK] ⇵[NAV] ↵[FOCUS] ^S[SAVE]",
                 EditState::Focused => "^Q[QUIT] Esc[BACK]",
             },
-            None,
+            self.error.as_deref(),
             None,
             &self.conf,
         );

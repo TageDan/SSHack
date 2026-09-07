@@ -83,6 +83,7 @@ impl LoginScreen {
         {
             return Some(Box::new(AdminScreen::new(self.conf.clone())));
         }
+        self.error = Some("wrong password".to_string());
         None
     }
 

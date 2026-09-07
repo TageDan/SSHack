@@ -7,7 +7,7 @@ use ratatui::{
     style::{Style, Stylize},
     widgets::{Block, Borders, Cell, Clear, Paragraph, Row, Table, TableState},
 };
-use ratatui_textarea::{Input, Key, TextArea};
+use ratatui_textarea::TextArea;
 
 use crate::{
     app::screens::leaderboard::LeaderboardScreen,

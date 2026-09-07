@@ -9,9 +9,9 @@ use ratatui::{
 };
 
 use crate::{
-    admin_app::screens,
+    admin_app::screens::{self, edit::EditScreen},
     conf::Conf,
-    database::Flag,
+    database::{self, Flag},
     screen::{Screen, draw_screen_border},
 };
 
@@ -20,7 +20,6 @@ pub struct AdminScreen {
     error: Option<String>,
     table_state: TableState,
     scroll: u16,
-    submission: String,
     filter: SearchFilter,
     conf: Conf,
 }
@@ -46,6 +45,14 @@ impl Screen for AdminScreen {
             (KeyCode::BackTab, KeyModifiers::SHIFT) | (KeyCode::Up, _) => self.focus_prev(),
             (KeyCode::Char('r'), KeyModifiers::CONTROL) => return self.reload(),
             (KeyCode::Char('f'), KeyModifiers::CONTROL) => self.filter.ui_active = true,
+            (KeyCode::Char('d'), KeyModifiers::CONTROL) => {
+                if let Err(e) = self.delete_current() {
+                    self.error = Some(e.to_string());
+                }
+            }
+            (KeyCode::Char('n'), KeyModifiers::CONTROL) => {
+                return Some(Box::new(EditScreen::new(None, self.conf.clone())));
+            }
             _ => (),
         };
         None
@@ -54,7 +61,7 @@ impl Screen for AdminScreen {
         let commands = if self.filter.ui_active {
             "^Q[QUIT] Esc[BACK] ⇥[KIND] ⇄[VALUE] ↵[APPLY]"
         } else {
-            "^Q[QUIT] ⇵[NAV] ↵[EDIT] ^R[RELOAD] ^F[FILTER]"
+            "^Q[QUIT] ⇵[NAV] ↵[EDIT] ^R[RELOAD] ^F[FILTER] ^N[NEW] ^D[DELETE]"
         };
 
         let area = draw_screen_border(
@@ -84,7 +91,7 @@ impl AdminScreen {
         let index = self.table_state.selected()?;
         let flag = self.flags.get(index)?.clone();
         Some(Box::new(screens::edit::EditScreen::new(
-            flag,
+            Some(flag),
             self.conf.clone(),
         )))
     }
@@ -100,7 +107,6 @@ impl AdminScreen {
             error,
             scroll: 0,
             filter: SearchFilter::new(),
-            submission: String::new(),
             conf,
         }
     }
@@ -233,6 +239,21 @@ impl AdminScreen {
             Err(e) => self.error = Some(e.to_string()),
         };
         None
+    }
+
+    fn delete_current(&mut self) -> Result<(), Box<dyn Error>> {
+        database::delete_flag(
+            self.flags
+                .get(
+                    self.table_state
+                        .selected()
+                        .ok_or("No flag selected".to_string())?,
+                )
+                .ok_or("Could not get flag")?
+                .id(),
+        )?;
+        self.reload();
+        Ok(())
     }
 }
 
