@@ -294,21 +294,12 @@ impl SearchFilter {
 
                 SearchFilterKind::Solved(_) => self.search_kind = SearchFilterKind::None,
             },
-            (KeyCode::Char(c), _) => match self.search_kind {
-                SearchFilterKind::Search(ref mut string) => string.push(c),
-                _ => (),
+            (KeyCode::Char(c), _) => if let SearchFilterKind::Search(ref mut string) = self.search_kind { string.push(c) },
+            (KeyCode::Backspace, _) => if let SearchFilterKind::Search(ref mut string) = self.search_kind {
+                string.pop();
             },
-            (KeyCode::Backspace, _) => match self.search_kind {
-                SearchFilterKind::Search(ref mut string) => {
-                    string.pop();
-                }
-                _ => (),
-            },
-            (KeyCode::Left | KeyCode::Right, _) => match self.search_kind {
-                SearchFilterKind::Solved(ref mut toggle) => {
-                    *toggle = !*toggle;
-                }
-                _ => (),
+            (KeyCode::Left | KeyCode::Right, _) => if let SearchFilterKind::Solved(ref mut toggle) = self.search_kind {
+                *toggle = !*toggle;
             },
             _ => (),
         }
@@ -364,7 +355,7 @@ impl SearchFilter {
                     kind,
                 );
                 f.render_widget(
-                    Paragraph::new(format!("{}", s).as_str())
+                    Paragraph::new(s.to_string().as_str())
                         .block(Block::bordered().title("value"))
                         .fg(conf.theme.base08),
                     value,

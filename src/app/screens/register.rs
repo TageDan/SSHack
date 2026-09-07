@@ -8,7 +8,7 @@ use ratatui::{
     crossterm::event::{KeyCode, KeyEvent, KeyModifiers},
     layout::{Constraint, Layout},
     style::Style,
-    widgets::{Block, Paragraph},
+    widgets::Block,
 };
 use ratatui_textarea::TextArea;
 
@@ -158,10 +158,10 @@ impl RegisterScreen<'_> {
         match database::User::register_user(&self.username.lines()[0], self.key.clone()) {
             Err(e) => {
                 self.error = Some(e.to_string());
-                return None;
+                None
             }
             Ok(u) => {
-                return Some(Box::new(BrowseScreen::new(u, self.conf.clone())));
+                Some(Box::new(BrowseScreen::new(u, self.conf.clone())))
             }
         }
     }

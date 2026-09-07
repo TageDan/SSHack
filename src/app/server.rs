@@ -219,51 +219,44 @@ impl Handler for AppServer {
     ) -> Result<(), Self::Error> {
         let ctf_client = self.ctf_clients.lock().await.contains_key(&self.id);
 
-        match ctf_client {
-            true => {
-                let mut current_event = Vec::new();
-                let mut iter = data.iter().peekable();
-                while let Some(b) = iter.next() {
-                    current_event.push(*b);
+        if ctf_client == true {
+            let mut current_event = Vec::new();
+            let mut iter = data.iter().peekable();
+            while let Some(b) = iter.next() {
+                current_event.push(*b);
 
-                    if let Ok(Some(ke)) = terminput::Event::parse_from(&current_event) {
-                        if ke.as_key().is_some_and(|x| {
-                            x.code == terminput::KeyCode::Esc && iter.peek().is_some()
-                        }) {
-                            continue;
-                        }
-                        current_event.clear();
-                        match terminput_crossterm::to_crossterm(ke)? {
-                            Event::Key(k) => match (k.code, k.modifiers) {
-                                (KeyCode::Char('q'), KeyModifiers::CONTROL) => {
-                                    let mut clients = self.ctf_clients.lock().await;
-                                    clients.remove(&self.id);
-
-                                    // Restore terminal
-                                    let mut data_out = Vec::new();
-                                    execute!(data_out, LeaveAlternateScreen, Show)?;
-                                    let res = session.handle().data(channel, data_out.into()).await;
-                                    if res.is_err() {
-                                        eprintln!("error restoring terminal")
-                                    }
-
-                                    let _ = session.handle().close(channel).await;
-                                }
-                                k => {
-                                    let mut clients = self.ctf_clients.lock().await;
-                                    let (_, app) = clients.get_mut(&self.id).unwrap();
-                                    if let Some(s) = app.screen.handle_input(Some(k)) {
-                                        app.screen = s;
-                                    }
-                                }
-                            },
-                            _ => (),
-                        };
+                if let Ok(Some(ke)) = terminput::Event::parse_from(&current_event) {
+                    if ke.as_key().is_some_and(|x| {
+                        x.code == terminput::KeyCode::Esc && iter.peek().is_some()
+                    }) {
+                        continue;
                     }
+                    current_event.clear();
+                    if let Event::Key(k) = terminput_crossterm::to_crossterm(ke)? { match (k.code, k.modifiers) {
+                        (KeyCode::Char('q'), KeyModifiers::CONTROL) => {
+                            let mut clients = self.ctf_clients.lock().await;
+                            clients.remove(&self.id);
+
+                            // Restore terminal
+                            let mut data_out = Vec::new();
+                            execute!(data_out, LeaveAlternateScreen, Show)?;
+                            let res = session.handle().data(channel, data_out.into()).await;
+                            if res.is_err() {
+                                eprintln!("error restoring terminal")
+                            }
+
+                            let _ = session.handle().close(channel).await;
+                        }
+                        k => {
+                            let mut clients = self.ctf_clients.lock().await;
+                            let (_, app) = clients.get_mut(&self.id).unwrap();
+                            if let Some(s) = app.screen.handle_input(Some(k)) {
+                                app.screen = s;
+                            }
+                        }
+                    } };
                 }
             }
-
-            false => (),
         }
 
         Ok(())
@@ -382,15 +375,14 @@ impl russh_sftp::server::Handler for SftpSession {
         id: u32,
         path: String,
     ) -> Result<russh_sftp::protocol::Attrs, Self::Error> {
-        if let Some(path) = get_file_path(&path) {
-            if path.is_file() {
+        if let Some(path) = get_file_path(&path)
+            && path.is_file() {
                 let mut attrs = FileAttributes::default();
                 attrs.set_dir(false);
                 attrs.set_symlink(false);
                 attrs.set_regular(true);
-                return Ok(russh_sftp::protocol::Attrs { id, attrs: attrs });
+                return Ok(russh_sftp::protocol::Attrs { id, attrs });
             }
-        }
         Err(StatusCode::NoSuchFile)
     }
 
@@ -399,14 +391,13 @@ impl russh_sftp::server::Handler for SftpSession {
         id: u32,
         handle: String,
     ) -> Result<russh_sftp::protocol::Attrs, Self::Error> {
-        if let Some(path) = get_file_path(&handle) {
-            if path.is_file() {
+        if let Some(path) = get_file_path(&handle)
+            && path.is_file() {
                 return Ok(russh_sftp::protocol::Attrs {
                     id,
                     attrs: FileAttributes::default(),
                 });
             }
-        }
         Err(StatusCode::NoSuchFile)
     }
 
@@ -415,15 +406,14 @@ impl russh_sftp::server::Handler for SftpSession {
         id: u32,
         path: String,
     ) -> Result<russh_sftp::protocol::Attrs, Self::Error> {
-        if let Some(path) = get_file_path(&path) {
-            if path.is_file() {
+        if let Some(path) = get_file_path(&path)
+            && path.is_file() {
                 let mut attrs = FileAttributes::default();
                 attrs.set_dir(false);
                 attrs.set_symlink(false);
                 attrs.set_regular(true);
-                return Ok(russh_sftp::protocol::Attrs { id, attrs: attrs });
+                return Ok(russh_sftp::protocol::Attrs { id, attrs });
             }
-        }
         Err(StatusCode::NoSuchFile)
     }
 
@@ -459,8 +449,8 @@ impl russh_sftp::server::Handler for SftpSession {
         _pflags: russh_sftp::protocol::OpenFlags,
         _attrs: russh_sftp::protocol::FileAttributes,
     ) -> Result<russh_sftp::protocol::Handle, Self::Error> {
-        if let Some(path) = get_file_path(&filename) {
-            if path.is_file() {
+        if let Some(path) = get_file_path(&filename)
+            && path.is_file() {
                 self.file_read_done = false;
 
                 return Ok(russh_sftp::protocol::Handle {
@@ -468,7 +458,6 @@ impl russh_sftp::server::Handler for SftpSession {
                     handle: filename,
                 });
             }
-        }
         Err(StatusCode::NoSuchFile)
     }
 
@@ -543,7 +532,7 @@ fn get_file_path(path: &str) -> Option<PathBuf> {
         return None;
     };
     println!("{:?}", new_path);
-    return Some(new_path);
+    Some(new_path)
 }
 
 fn get_all_files() -> Vec<PathBuf> {

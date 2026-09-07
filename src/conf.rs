@@ -77,6 +77,6 @@ This CTF was built using the SSHack ctf framework: https://github.com/d-z0n/SSHa
         let mut content = String::new();
         f.read_to_string(&mut content).ok()?;
         let conf_str: ConfToml = from_str(&content).ok()?;
-        Some(conf_str.conf()?)
+        conf_str.conf()
     }
 }

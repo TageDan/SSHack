@@ -47,8 +47,8 @@ pub(crate) fn app(
     };
     loop {
         terminal.draw(|f| app.render(f))?;
-        if poll(Duration::from_millis(50)).is_ok_and(|x| x) {
-            if let Some(k) = crossterm::event::read()?.as_key_press_event() {
+        if poll(Duration::from_millis(50)).is_ok_and(|x| x)
+            && let Some(k) = crossterm::event::read()?.as_key_press_event() {
                 match (k.code, k.modifiers) {
                     (KeyCode::Char('q'), KeyModifiers::CONTROL) => return Ok(()),
                     k => {
@@ -58,7 +58,6 @@ pub(crate) fn app(
                     }
                 }
             }
-        }
         if let Some(t) = app.screen.handle_input(None) {
             app.screen = t;
         }

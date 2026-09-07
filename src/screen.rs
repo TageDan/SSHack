@@ -91,7 +91,7 @@ pub fn draw_screen_border(
     }
 
     if let Some(u) = user {
-        let points = format!(" {} points ", u.points().to_string());
+        let points = format!(" {} points ", u.points());
         let username = format!(" {} ", u.name());
 
         let [_, user_rect, point_rect] = Layout::horizontal([

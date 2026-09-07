@@ -73,7 +73,7 @@ impl Theme {
         path.push(".config");
         path.push("sshack");
         path.push("themes");
-        path.push(&format!("{}.yaml", theme));
+        path.push(format!("{}.yaml", theme));
         let mut f = std::fs::File::open(path).ok()?;
         let mut content = String::new();
         f.read_to_string(&mut content).ok()?;

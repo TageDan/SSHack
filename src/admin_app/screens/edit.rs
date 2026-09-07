@@ -99,9 +99,8 @@ impl EditScreen<'_> {
         let points = self.points.lines().iter().fold(String::new(), |x, a| x + a);
         let points = points
             .parse::<i32>()
-            .or_else(|e| {
+            .inspect_err(|e| {
                 self.error = Some(e.to_string());
-                Err(e)
             })
             .ok()?;
         if let Some(f) = self.flag.as_ref() {
@@ -123,24 +122,22 @@ impl EditScreen<'_> {
                 self.error = Some(e.to_string());
                 return None;
             };
-        } else {
-            if let Err(e) = database::create_flag(
-                &self.title.lines().iter().fold(String::new(), |x, a| x + a),
-                &self
-                    .description
-                    .lines()
-                    .iter()
-                    .fold(String::new(), |x, a| x + a),
-                points,
-                &self
-                    .flag_string
-                    .lines()
-                    .iter()
-                    .fold(String::new(), |x, a| x + a),
-            ) {
-                self.error = Some(e.to_string());
-                return None;
-            };
+        } else if let Err(e) = database::create_flag(
+            &self.title.lines().iter().fold(String::new(), |x, a| x + a),
+            &self
+                .description
+                .lines()
+                .iter()
+                .fold(String::new(), |x, a| x + a),
+            points,
+            &self
+                .flag_string
+                .lines()
+                .iter()
+                .fold(String::new(), |x, a| x + a),
+        ) {
+            self.error = Some(e.to_string());
+            return None;
         }
         Some(Box::new(AdminScreen::new(self.conf.clone())))
     }
@@ -158,12 +155,12 @@ impl Screen for EditScreen<'_> {
         self.error = None;
         match key {
             (KeyCode::Char('s'), KeyModifiers::CONTROL) if !(self.state == EditState::Focused) => {
-                return self.save();
+                self.save()
             }
             (KeyCode::Enter, _) if !(self.state == EditState::Focused && self.focus == 2) => {
-                return self.submit();
+                self.submit()
             }
-            (KeyCode::Esc, _) => return self.escape(),
+            (KeyCode::Esc, _) => self.escape(),
             (KeyCode::Down, _) if self.state == EditState::Navigation => self.focus_next(),
             (KeyCode::Up, _) if self.state == EditState::Navigation => self.focus_prev(),
             (k, m) if self.state == EditState::Focused => {

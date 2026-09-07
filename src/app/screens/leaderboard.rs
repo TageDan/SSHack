@@ -40,9 +40,7 @@ impl Screen for LeaderboardScreen {
                 };
             }
             (KeyCode::Right, KeyModifiers::CONTROL) => {
-                if self.conf.about.is_none() {
-                    return None;
-                }
+                self.conf.about.as_ref()?;
                 return Some(Box::new(AboutScreen::new(
                     self.user.clone(),
                     self.conf.clone(),

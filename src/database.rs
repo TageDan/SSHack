@@ -80,11 +80,11 @@ impl User {
     }
 
     pub fn register_user(name: &str, key: russh::keys::PublicKey) -> Result<User, Box<dyn Error>> {
-        if let Ok(_) = name.parse::<isize>() {
+        if name.parse::<isize>().is_ok() {
             return Err("Name cannot be a number".into());
         }
 
-        if let Ok(_) = name.parse::<f64>() {
+        if name.parse::<f64>().is_ok() {
             return Err("Name cannot be a number".into());
         }
 

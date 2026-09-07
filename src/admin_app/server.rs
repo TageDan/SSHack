@@ -193,51 +193,44 @@ impl Handler for AdminAppServer {
         session: &mut Session,
     ) -> Result<(), Self::Error> {
         let client = self.clients.lock().await.contains_key(&self.id);
-        match client {
-            true => {
-                let mut current_event = Vec::new();
-                let mut iter = data.iter().peekable();
-                while let Some(b) = iter.next() {
-                    current_event.push(*b);
+        if client == true {
+            let mut current_event = Vec::new();
+            let mut iter = data.iter().peekable();
+            while let Some(b) = iter.next() {
+                current_event.push(*b);
 
-                    if let Ok(Some(ke)) = terminput::Event::parse_from(&current_event) {
-                        if ke.as_key().is_some_and(|x| {
-                            x.code == terminput::KeyCode::Esc && iter.peek().is_some()
-                        }) {
-                            continue;
-                        }
-                        current_event.clear();
-                        match terminput_crossterm::to_crossterm(ke)? {
-                            Event::Key(k) => match (k.code, k.modifiers) {
-                                (KeyCode::Char('q'), KeyModifiers::CONTROL) => {
-                                    let mut clients = self.clients.lock().await;
-                                    clients.remove(&self.id);
-
-                                    // Restore terminal
-                                    let mut data_out = Vec::new();
-                                    execute!(data_out, LeaveAlternateScreen, Show)?;
-                                    let res = session.handle().data(channel, data_out.into()).await;
-                                    if res.is_err() {
-                                        eprintln!("error restoring terminal")
-                                    }
-
-                                    let _ = session.handle().close(channel).await;
-                                }
-                                k => {
-                                    let mut clients = self.clients.lock().await;
-                                    let (_, app) = clients.get_mut(&self.id).unwrap();
-                                    if let Some(s) = app.screen.handle_input(Some(k)) {
-                                        app.screen = s;
-                                    }
-                                }
-                            },
-                            _ => (),
-                        };
+                if let Ok(Some(ke)) = terminput::Event::parse_from(&current_event) {
+                    if ke.as_key().is_some_and(|x| {
+                        x.code == terminput::KeyCode::Esc && iter.peek().is_some()
+                    }) {
+                        continue;
                     }
+                    current_event.clear();
+                    if let Event::Key(k) = terminput_crossterm::to_crossterm(ke)? { match (k.code, k.modifiers) {
+                        (KeyCode::Char('q'), KeyModifiers::CONTROL) => {
+                            let mut clients = self.clients.lock().await;
+                            clients.remove(&self.id);
+
+                            // Restore terminal
+                            let mut data_out = Vec::new();
+                            execute!(data_out, LeaveAlternateScreen, Show)?;
+                            let res = session.handle().data(channel, data_out.into()).await;
+                            if res.is_err() {
+                                eprintln!("error restoring terminal")
+                            }
+
+                            let _ = session.handle().close(channel).await;
+                        }
+                        k => {
+                            let mut clients = self.clients.lock().await;
+                            let (_, app) = clients.get_mut(&self.id).unwrap();
+                            if let Some(s) = app.screen.handle_input(Some(k)) {
+                                app.screen = s;
+                            }
+                        }
+                    } };
                 }
             }
-
-            false => (),
         }
 
         Ok(())
