@@ -80,6 +80,14 @@ impl User {
     }
 
     pub fn register_user(name: &str, key: russh::keys::PublicKey) -> Result<User, Box<dyn Error>> {
+        if let Ok(_) = name.parse::<isize>() {
+            return Err("Name cannot be a number".into());
+        }
+
+        if let Ok(_) = name.parse::<f64>() {
+            return Err("Name cannot be a number".into());
+        }
+
         let conn = conn();
 
         const QUERY: &str = "SELECT EXISTS (SELECT * FROM users WHERE name = ?1 OR key = ?2)";
