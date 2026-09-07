@@ -111,7 +111,7 @@ impl EditScreen<'_> {
                     .description
                     .lines()
                     .iter()
-                    .fold(String::new(), |x, a| x + a),
+                    .fold(String::new(), |x, a| x + a + "\n"),
                 points,
                 &self
                     .flag_string
@@ -128,7 +128,7 @@ impl EditScreen<'_> {
                 .description
                 .lines()
                 .iter()
-                .fold(String::new(), |x, a| x + a),
+                .fold(String::new(), |x, a| x + a + "\n"),
             points,
             &self
                 .flag_string
