@@ -193,7 +193,7 @@ impl Handler for AdminAppServer {
         session: &mut Session,
     ) -> Result<(), Self::Error> {
         let client = self.clients.lock().await.contains_key(&self.id);
-        if client == true {
+        if client {
             let mut current_event = Vec::new();
             let mut iter = data.iter().peekable();
             while let Some(b) = iter.next() {

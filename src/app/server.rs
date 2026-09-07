@@ -219,7 +219,7 @@ impl Handler for AppServer {
     ) -> Result<(), Self::Error> {
         let ctf_client = self.ctf_clients.lock().await.contains_key(&self.id);
 
-        if ctf_client == true {
+        if ctf_client {
             let mut current_event = Vec::new();
             let mut iter = data.iter().peekable();
             while let Some(b) = iter.next() {
